@@ -19,8 +19,17 @@ const itemsSchema = {
   name: String
 };
 
+//creating a new schema
+const listSchema = {
+  name: String,
+  items: [itemsSchema]
+};
+
 //creating the model
 const Item = mongoose.model("Item",itemsSchema);
+
+//creating the model
+const List = mongoose.model("List",listSchema);
 
 //creating the documents
 const item1 = new Item({
@@ -35,6 +44,8 @@ const item3 = new Item({
   name: "Research"
 });
 
+const defaultItems = [item1,item2,item3];
+
 //saving it into the database
 
 
@@ -48,7 +59,7 @@ app.get("/", function(req, res) {
   Item.find({},function(err,foundItems){
     //checking if the foundItems array is empty
     if(foundItems.length == 0){
-      const defaultItems = [item1,item2,item3];
+     
       Item.insertMany(defaultItems,function(err){
         if(err){
             console.log(err)
@@ -69,22 +80,58 @@ app.get("/", function(req, res) {
 app.post("/", function(req, res){
 
   const itemName = req.body.newItem;
+  const listName = req.body.list;
 
   //creating a new item document on the basis of the input received from the post request
   const item = new Item({
     name: itemName
   });
 
-  //using the save
-  item.save();
+  if(listName == "Today"){
+    //using the save
+    item.save();
+    res.redirect("/")
+  }else{
+    List.findOne({name:listName}, function(err,foundList){
+      foundList.items.push(item)
+      foundList.save();
 
-  res.redirect("/")
+      res.redirect("/" + listName)
+    });
+  }
+
+  
 
 });
 
-app.get("/work", function(req,res){
-  res.render("list", {listTitle: "Work List", newListItems: workItems});
-});
+//creating the custom route
+app.get("/:customListName", function(req,res){
+  //storing the customListName
+  const customListName = req.params.customListName;
+
+  //checking whther the list name is present inside the collection
+  List.findOne({name: customListName}, function(err,foundList){
+      if(!err){
+        if(!foundList){
+          //create a new list
+            //making the document
+            const list = new List({
+            name: customListName,
+            items: defaultItems
+        })
+        list.save();
+        res.redirect("/" + customListName)
+        }else{
+          //show the existing list
+          res.render("list", {listTitle: foundList.name, newListItems: foundList.items})
+        }
+      }
+  })
+
+  
+
+  //saving the document
+})
 
 app.get("/about", function(req, res){
   res.render("about");
