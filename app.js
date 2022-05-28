@@ -3,6 +3,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose")
+const _ = require('lodash');
 
 const app = express();
 
@@ -107,7 +108,7 @@ app.post("/", function(req, res){
 //creating the custom route
 app.get("/:customListName", function(req,res){
   //storing the customListName
-  const customListName = req.params.customListName;
+  const customListName = _.capitalize(req.params.customListName);
 
   //checking whther the list name is present inside the collection
   List.findOne({name: customListName}, function(err,foundList){
@@ -140,18 +141,31 @@ app.get("/about", function(req, res){
 //adding the route for delete
 app.post("/delete", function(req,res){
   const checkedItemId = req.body.checkbox;
-  
-  //making the delete function
-  Item.findByIdAndRemove({_id:checkedItemId}, function(err){
-    if(err){
-      console.log(err);
-    }else{
-      console.log("Successfully deleted the item!!")
-    }
-  })
+  const listName = req.body.listName;
 
-  //for the purpose of redirecting it
-  res.redirect("/");
+  if(listName == "Today"){
+    //making the delete function
+    Item.findByIdAndRemove({_id:checkedItemId}, function(err){
+        if(err){
+          console.log(err);
+        }else{
+          console.log("Successfully deleted the item!!")
+          //for the purpose of redirecting it
+          res.redirect("/");
+        }
+      })
+      
+  }else{
+    List.findOneAndUpdate({name:listName},{$pull: {items: {_id:checkedItemId}}}, function(err,foundList){
+            if(!err){
+              res.redirect("/" + listName);
+            }
+    })
+  }
+  
+  
+
+  
 })
 
 app.listen(3000, function() {
